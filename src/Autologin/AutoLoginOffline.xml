@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<widget id="AutoLogin.widget.AutoLoginOffline" needsEntityContext="true" offlineCapable="true" xmlns="http://www.mendix.com/widget/1.0/">
+    <name>AutoLoginOffline</name>
+    <description>The description of this widget.</description>
+
+    <icon>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</icon>
+
+    <properties>      
+        <property key="loginEntity" type="entity" required="true" allowNonPersistableEntities="true">
+            <caption>Login entity</caption>
+            <category>Data source</category>
+            <description>The entity of the locations</description>
+        </property>
+
+        <property key="usernameAttribute" type="attribute" entityProperty="loginEntity" required="true">
+            <caption>Username</caption>
+            <category>Data source</category>
+            <description>Attribute where the username string is stored.</description>
+            <attributeTypes>
+                <attributeType name="String"/>
+            </attributeTypes>
+        </property>
+
+        <property key="passwordAttribute" type="attribute" entityProperty="loginEntity" required="true">
+            <caption>Password</caption>
+            <category>Data source</category>
+            <description>Attribute where the password string is stored.</description>
+            <attributeTypes>
+                <attributeType name="String"/>
+            </attributeTypes>
+        </property>
+
+        <property key="buttonLabel" type="string" defaultValue="Sign In" required="false">
+            <caption>Button label</caption>
+            <category>Form</category>
+            <description>The label on the sign in button.</description>
+        </property>
+
+        <property key="usernameTextbox" type="string" required="true">
+            <caption>Username class</caption>
+            <category>Form</category>
+            <description>Class given to the username textbox.</description>
+        </property>
+
+        <property key="passwordTextbox" type="string" required="true">
+            <caption>Password class</caption>
+            <category>Form</category>
+            <description>Class given to the password textbox.</description>
+        </property>  
+    </properties>
+</widget>

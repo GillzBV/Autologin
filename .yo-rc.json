@@ -1,0 +1,10 @@
+{
+  "generator-mendix": {
+    "promptValues": {
+      "copyright": "Gillz",
+      "license": "Apache 2",
+      "author": "Hunter Koppen",
+      "boilerplate": "appstore"
+    }
+  }
+}
