@@ -39,7 +39,6 @@ define([
             submitButtonNode: null,
             BlurBoxNode: null,
 
-
             // Internal variables.
             _handles: null,
             _contextObj: null,
@@ -89,6 +88,14 @@ define([
                 this.connect(this.submitButtonNode, "click", function (e) {
                     this._setCredentials();
                 });
+                var usernameTextbox = document.getElementsByClassName(this.usernameTextbox);
+                var passwordTextbox = document.getElementsByClassName(this.passwordTextbox);
+                this.connect(usernameTextbox[0], "onchange", function (e) {
+                    this._removeMessage();
+                });
+                this.connect(passwordTextbox[0], "onchange", function (e) {
+                    this._removeMessage();
+                });
                 var usernamebox = document.getElementsByClassName(this.usernameTextbox);
                 usernamebox[0].childNodes[1].childNodes[0].setAttribute("autocapitalize", "none");
             },
@@ -96,29 +103,34 @@ define([
             //get credentials
             _getCredentials: function () {
                 logger.debug(this.id + "._getCredentials");
+                
+                var loginArgs = {
+                    loginFlow: this.loginMicroflow,
+                    addMessage: this._addMessage,
+                    passwordClass: this.passwordTextbox,
+                    removeFunction: this._removeMessage,
+                    page: document.getElementsByClassName("mx-page")
+                };
 
-                var user = this._contextObj.get(this.usernameAttribute);
-                var pass = this._contextObj.get(this.passwordAttribute);
                 var page = document.getElementsByClassName("mx-page");
                 var usernameTextbox = document.getElementsByClassName(this.usernameTextbox);
                 var passwordTextbox = document.getElementsByClassName(this.passwordTextbox);
                 var db = openDatabase('Gillz', '1.0', 'CREDS', 2 * 1024 * 1024);
-                var inlogobj = this._contextObj;
-                var loginfunction = this._loginUsersql;
-                var loginflow = this.loginMicroflow;
+                var inlogObj = this._contextObj;
+                var loginFunction = this._loginUsersql;
                 var loginEntity = this.loginEntity;
                 var usernameAttribute = this.usernameAttribute;
                 var passwordAttribute = this.passwordAttribute;
 
                 db.transaction(function (tx) {
                     tx.executeSql('SELECT * FROM LOGS', [], function (tx, results) {
-                        user = results.rows.item(0).log;
-                        pass = results.rows.item(1).log;
-                        usernameTextbox[0].value = user;
-                        passwordTextbox[0].value = pass;
-                        inlogobj.set(usernameAttribute, user);
-                        inlogobj.set(passwordAttribute, pass);
-                        if (user.length > 2 && user != "null" && user != "" && user != "UNDEFINED") {
+                        var userResult = results.rows.item(0).log;
+                        var passResult = results.rows.item(1).log;
+                        usernameTextbox[0].value = userResult;
+                        passwordTextbox[0].value = passResult;
+                        inlogObj.set(usernameAttribute, userResult);
+                        inlogObj.set(passwordAttribute, passResult);
+                        if (userResult.length > 2 && userResult != "null" && userResult != "" && userResult != "UNDEFINED") {
                             page[0].setAttribute("style", "opacity: 0 !important;");
                             setTimeout(function () {
                                 page[0].setAttribute("style", "opacity: 1 !important;");
@@ -126,9 +138,12 @@ define([
                             mx.data.create({
                                 entity: loginEntity,
                                 callback: function (obj) {
-                                    obj.set(usernameAttribute, user);
-                                    obj.set(passwordAttribute, pass);
-                                    loginfunction(loginflow, obj.getGuid(), user, pass);
+                                    obj.set(usernameAttribute, userResult);
+                                    obj.set(passwordAttribute, passResult);
+                                    loginArgs.user = userResult
+                                    loginArgs.pass = passResult
+                                    loginArgs.guid =  obj.getGuid();
+                                    loginFunction(loginArgs);
                                 }
                             })
                         };
@@ -136,19 +151,46 @@ define([
                 });
             },
 
-            // adds validations message
-            _addMessage: function () {
-                var passwordTextbox = document.getElementsByClassName(this.passwordTextbox);
-                this.field = document.getElementsByClassName(passwordTextbox);
-                var invalidStr = "<div id='login-invalid' class='alert alert-danger'>Incorrect username or password</div>"
-                dojo.place(invalidStr, this.field.domNode, "after");
-                dojo.addClass(this.field.domNode, "danger");
+            // Login function when sql login is found
+            _loginUsersql: function (loginArgs) {
+                if (loginArgs.loginFlow != undefined && loginArgs.loginFlow != "") {
+                    mx.ui.action(loginArgs.loginFlow, {
+                        params: {
+                            applyto: "selection",
+                            guids: [loginArgs.guid]
+                        },
+                        progress: "Modal",
+                        callback: function (result) {
+                            console.log("MF called succesfully");
+                            if (result == true) {
+                                mx.login(loginArgs.user, loginArgs.pass, function () {
+                                }, function () {
+                                    loginArgs.page[0].setAttribute("style", "opacity: 1 !important;");
+                                    loginArgs.addMessage(loginArgs);
+                                });
+                            }
+                        }
+                    });
+                } else {
+                    mx.login(loginArgs.user, loginArgs.pass, function () {
+                    }, function () {
+                        loginArgs.page[0].setAttribute("style", "opacity: 1 !important;");
+                        loginArgs.addmessage(loginArgs);
+                    });
+                }
             },
 
             // Set Credentials
             _setCredentials: function () {
-                var resultuser = this._contextObj.get(this.usernameAttribute);
-                var resultpw = this._contextObj.get(this.passwordAttribute);
+                var loginArgs = {
+                    user: this._contextObj.get(this.usernameAttribute), 
+                    pass: this._contextObj.get(this.passwordAttribute),
+                    loginFlow: this.loginMicroflow,
+                    guid: this._contextObj.getGuid(), 
+                    addMessage: this._addMessage,
+                    passwordClass: this.passwordTextbox,
+                    removeFunction: this._removeMessage
+                }
 
                 var db = openDatabase('Gillz', '1.0', 'CREDS', 2 * 1024 * 1024);
                 db.transaction(function (tx) {
@@ -161,73 +203,54 @@ define([
                         }
                     )
                     tx.executeSql('CREATE TABLE IF NOT EXISTS LOGS (id unique, log)');
-                    tx.executeSql('INSERT INTO LOGS (id, log) VALUES (1, ?)', [resultuser]);
-                    tx.executeSql('INSERT INTO LOGS (id, log) VALUES (2, ?)', [resultpw]);
+                    tx.executeSql('INSERT INTO LOGS (id, log) VALUES (1, ?)', [loginArgs.user]);
+                    tx.executeSql('INSERT INTO LOGS (id, log) VALUES (2, ?)', [loginArgs.pass]);
                 });
-                this._loginUser(this.loginMicroflow, this._contextObj.getGuid());
+                this._loginUser(loginArgs);
             },
 
-            // Login function when sql is found
-            _loginUsersql: function (microflowname, guid, username, password) {
-                var _username = username;
-                var _password = password;
-                var page = document.getElementsByClassName("mx-page");
-                if (microflowname != undefined && microflowname != "") {
-                    mx.ui.action(microflowname, {
+            _loginUser: function (loginArgs) {
+                if (loginArgs.loginFlow != undefined && loginArgs.loginFlow != "") {
+                    mx.ui.action(loginArgs.loginFlow, {
                         params: {
                             applyto: "selection",
-                            guids: [guid]
+                            guids: [loginArgs.guid]
                         },
                         progress: "Modal",
                         callback: function (result) {
                             console.log("MF called succesfully");
                             if (result == true) {
-                                mx.login(_username, _password, function () {
+                                mx.login(loginArgs.user, loginArgs.pass, function () {
+
                                 }, function () {
-                                    page[0].setAttribute("style", "opacity: 1 !important;");
-                                    alert("wrong username or password");
+                                    loginArgs.addMessage(loginArgs);
                                 });
                             }
                         }
                     });
                 } else {
-                    mx.login(_username, _password, function () {
+                    mx.login(loginArgs.user, loginArgs.pass, function () {
+
                     }, function () {
-                        page[0].setAttribute("style", "opacity: 1 !important;");
-                        alert("wrong username or password");
+                        loginArgs.addMessage(loginArgs);
                     });
                 }
             },
 
-            _loginUser: function (microflowname, guid) {
-                var user = this._contextObj.get(this.usernameAttribute);
-                var pass = this._contextObj.get(this.passwordAttribute);
-                if (microflowname != undefined && microflowname != "") {
-                    mx.ui.action(microflowname, {
-                        params: {
-                            applyto: "selection",
-                            guids: [guid]
-                        },
-                        progress: "Modal",
-                        callback: function (result) {
-                            console.log("MF called succesfully");
-                            if (result == true) {
-                                mx.login(user, pass, function () {
-
-                                }, function () {
-                                    alert("wrong username or password");
-                                });
-                            }
-                        }
-                    });
-                } else {
-                    mx.login(user, pass, function () {
-
-                    }, function () {
-                        alert("wrong username or password");
-                    });
+            // adds validations message
+            _addMessage: function (loginArgs) {
+                if (dojo.byId('login-invalid') !== null){
+                    loginArgs.removeFunction();
                 }
+                var invalidStr = "<div id='login-invalid' class='alert alert-danger'>Incorrect username or password</div>"
+                var domNode = document.getElementsByClassName(loginArgs.passwordClass)[0];
+                dojo.place(invalidStr, domNode, "after");
             },
+
+            _removeMessage : function () {
+                dojo.destroy('login-invalid');
+            },
+
             // Reset subscriptions.
             _resetSubscriptions: function () {
                 logger.debug(this.id + "._resetSubscriptions");
