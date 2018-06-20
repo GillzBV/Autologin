@@ -9,7 +9,7 @@
         <property key="loginEntity" type="entity" required="true" allowNonPersistableEntities="true">
             <caption>Login entity</caption>
             <category>Data source</category>
-            <description>The entity of the locations</description>
+            <description>The entity of the locations (Offline requires a persistable entity)</description>
         </property>
 
         <property key="usernameAttribute" type="attribute" entityProperty="loginEntity" required="true">
@@ -32,8 +32,14 @@
 
         <property key="buttonLabel" type="string" defaultValue="Sign In" required="false">
             <caption>Button label</caption>
-            <category>Form</category>
-            <description>The label on the sign in button.</description>
+            <category>Button</category>
+            <description>The label on the sign in button. (the button can be styled using the loginbutton class)</description>
+        </property>
+
+        <property key="buttonClasses" type="string" defaultValue="btn-primary" required="false">
+            <caption>Button Classes</caption>
+            <category>Button</category>
+            <description>The classes given to the Sign In button, separated by comma's. (the button can also be styled using the loginbutton class)</description>
         </property>
 
         <property key="usernameTextbox" type="string" required="true">
@@ -46,6 +52,12 @@
             <caption>Password class</caption>
             <category>Form</category>
             <description>Class given to the password textbox.</description>
-        </property>  
+        </property>
+
+        <property key="validationtext" type="string" defaultValue="Incorrect username or password" required="true">
+            <caption>Validation Text</caption>
+            <category>Form</category>
+            <description>Text to show as inlog validation.</description>
+        </property>   
     </properties>
 </widget>

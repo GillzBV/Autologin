@@ -33,11 +33,12 @@ define([
         usernameTextbox: "",
         passwordTextbox: "",
         buttonLabel: "",
+        validationtext: "",
+        buttonClasses: "",
 
         //DOM elements
         submitButtonNode: null,
         BlurBoxNode: null,
-
         
         // Internal variables.
         _handles: null,
@@ -82,6 +83,15 @@ define([
             logger.debug(this.id + "._updateRendering");
             this._executeCallback(callback, "_updateRendering");
             this.submitButtonNode.value = this.buttonLabel;
+            var cleanclasses = this.buttonClasses.replace(" ", "");
+            var splitclasses = cleanclasses.split(',');
+            var classeslength = splitclasses.length
+            for (var i = 0; i < classeslength; i++) {
+                this.submitButtonNode.classList.add(splitclasses[i]);
+            }
+            var usernamebox = document.getElementsByClassName(this.usernameTextbox);
+            usernamebox[0].childNodes[1].childNodes[0].setAttribute("autocapitalize", "none");
+            usernamebox[0].childNodes[1].childNodes[0].setAttribute("autocorrect", "off");
         },
         
         // Attach events to HTML dom elements
@@ -89,21 +99,23 @@ define([
             this.connect(this.submitButtonNode, "click", function (e) {
                 this._setCredentials();
             });
-            var usernamebox = document.getElementsByClassName(this.usernameTextbox);
-            usernamebox[0].childNodes[1].childNodes[0].setAttribute("autocapitalize", "none");
         },
 
         //get credentials
         _getCredentials: function () {
             logger.debug(this.id + "._getCredentials");
+
+            var loginArgs = {
+                addMessage: this._addMessage,
+                passwordClass: this.passwordTextbox,
+                removeFunction: this._removeMessage,
+                page: document.getElementsByClassName("mx-page"),
+                validation: this.validationtext
+            };
             
-            var user = this._contextObj.get(this.usernameAttribute);
-            var pass = this._contextObj.get(this.passwordAttribute);
-            var page = document.getElementsByClassName("mx-page");
             var usernameTextbox = document.getElementsByClassName(this.usernameTextbox);
             var passwordTextbox = document.getElementsByClassName(this.passwordTextbox);
             var db = openDatabase('Gillz', '1.0', 'CREDS', 2 * 1024 * 1024);
-            var inlogobj = this._contextObj;
             var loginfunction = this._loginUsersql;
             var usernameAttribute = this.usernameAttribute;
             var passwordAttribute = this.passwordAttribute;
@@ -111,27 +123,47 @@ define([
             
             db.transaction(function (tx) {
                 tx.executeSql('SELECT * FROM LOGS', [], function (tx, results) {
-                    user = results.rows.item(0).log;
-                    pass = results.rows.item(1).log;
-                    usernameTextbox[0].value = user;
-                    passwordTextbox[0].value = pass;
-                    inlogobj.set(usernameAttribute, user);
-                    inlogobj.set(passwordAttribute, pass);
-                    if (user.length > 2 && user!="null" && user!="" && user!="UNDEFINED"){
-                        page[0].setAttribute("style", "opacity: 0 !important;");
+                    var userResult = results.rows.item(0).log;
+                    var passResult = results.rows.item(1).log;
+                    usernameTextbox[0].value = userResult;
+                    passwordTextbox[0].value = passResult;
+                    inlogObj.set(usernameAttribute, userResult);
+                    inlogObj.set(passwordAttribute, passResult);
+                    if (userResult.length > 2 && userResult!="null" && userResult!="" && userResult!="UNDEFINED"){
+                        loginArgs.page[0].setAttribute("style", "opacity: 0 !important;");
                         setTimeout(function() {
-                            page[0].setAttribute("style", "opacity: 1 !important;");
+                            loginArgs.page[0].setAttribute("style", "opacity: 1 !important;");
                         }, 3000);
-                            loginfunction(user, pass);
+                        loginArgs.user = userResult
+                        loginArgs.pass = passResult
+                        loginfunction(loginArgs);
                     };
                 }, null);
             });                            
         },
 
+        // Login function when sql is found
+        _loginUsersql: function (loginArgs) {
+            mx.login(loginArgs.user, loginArgs.pass, function() {
+                delete window.localStorage.session
+            }, function() {
+                loginArgs.page[0].setAttribute("style", "opacity: 1 !important;");
+                loginArgs.addmessage(loginArgs);
+            });
+        },        
+
         // Set Credentials
         _setCredentials: function () {
-            var resultuser = this._contextObj.get(this.usernameAttribute);
-            var resultpw = this._contextObj.get(this.passwordAttribute);
+            logger.debug(this.id + "._setCredentials");
+
+            var loginArgs = {
+                user: this._contextObj.get(this.usernameAttribute), 
+                pass: this._contextObj.get(this.passwordAttribute),
+                addMessage: this._addMessage,
+                passwordClass: this.passwordTextbox,
+                removeFunction: this._removeMessage,
+                validation: this.validationtext
+            }
             
             var db = openDatabase('Gillz', '1.0', 'CREDS', 2 * 1024 * 1024);
             db.transaction(function (tx) {
@@ -144,34 +176,33 @@ define([
                     }
                 )
                 tx.executeSql('CREATE TABLE IF NOT EXISTS LOGS (id unique, log)');
-                tx.executeSql('INSERT INTO LOGS (id, log) VALUES (1, ?)', [resultuser]);
-                tx.executeSql('INSERT INTO LOGS (id, log) VALUES (2, ?)', [resultpw]);
+                tx.executeSql('INSERT INTO LOGS (id, log) VALUES (1, ?)', [loginArgs.user]);
+                tx.executeSql('INSERT INTO LOGS (id, log) VALUES (2, ?)', [loginArgs.pass]);
             });        
-            this._loginUser();      
+            this._loginUser(loginArgs);      
         },
 
-        // Login function when sql is found
-        _loginUsersql: function (username, password) {
-            var _username = username;
-            var _password = password;
-            var page = document.getElementsByClassName("mx-page");
-            mx.login(_username, _password, function() {
+        _loginUser: function (loginArgs) {
+            mx.login(loginArgs.user, loginArgs.pass, function() {
                 delete window.localStorage.session
             }, function() {
-                page[0].setAttribute("style", "opacity: 1 !important;");
-                alert("wrong username or password");
+                loginArgs.addMessage(loginArgs);
             });
         },
 
-        _loginUser: function () {
-            var _username = this._contextObj.get(this.usernameAttribute);
-            var _password = this._contextObj.get(this.passwordAttribute);
-            mx.login(_username, _password, function() {
-                delete window.localStorage.session
-            }, function() {
-                alert("wrong username or password");
-            });
+        // adds validations message
+        _addMessage: function (loginArgs) {
+            if (dojo.byId('login-invalid') !== null){
+                loginArgs.removeFunction();
+            }
+            var invalidStr = "<div id='login-invalid' class='alert alert-danger'>" + loginArgs.validation + "</div>"
+            var domNode = document.getElementsByClassName(loginArgs.passwordClass)[0];
+            dojo.place(invalidStr, domNode, "after");
         },
+
+        _removeMessage : function () {
+            dojo.destroy('login-invalid');
+        },        
 
         // Reset subscriptions.
         _resetSubscriptions: function () {

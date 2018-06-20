@@ -34,7 +34,9 @@ define([
             usernameTextbox: "",
             passwordTextbox: "",
             buttonLabel: "",
-
+            validationtext: "",
+            buttonClasses: "",
+            
             //DOM elements
             submitButtonNode: null,
             BlurBoxNode: null,
@@ -81,6 +83,15 @@ define([
                 logger.debug(this.id + "._updateRendering");
                 this._executeCallback(callback, "_updateRendering");
                 this.submitButtonNode.value = this.buttonLabel;
+                var cleanclasses = this.buttonClasses.replace(" ", "");
+                var splitclasses = cleanclasses.split(',');
+                var classeslength = splitclasses.length
+                for (var i = 0; i < classeslength; i++) {
+                    this.submitButtonNode.classList.add(splitclasses[i]);
+                }
+                var usernamebox = document.getElementsByClassName(this.usernameTextbox);
+                usernamebox[0].childNodes[1].childNodes[0].setAttribute("autocapitalize", "none");
+                usernamebox[0].childNodes[1].childNodes[0].setAttribute("autocorrect", "off");
             },
 
             // Attach events to HTML dom elements
@@ -96,8 +107,6 @@ define([
                 this.connect(passwordTextbox[0], "onchange", function (e) {
                     this._removeMessage();
                 });
-                var usernamebox = document.getElementsByClassName(this.usernameTextbox);
-                usernamebox[0].childNodes[1].childNodes[0].setAttribute("autocapitalize", "none");
             },
 
             //get credentials
@@ -109,10 +118,10 @@ define([
                     addMessage: this._addMessage,
                     passwordClass: this.passwordTextbox,
                     removeFunction: this._removeMessage,
-                    page: document.getElementsByClassName("mx-page")
+                    page: document.getElementsByClassName("mx-page"),
+                    validation: this.validationtext
                 };
 
-                var page = document.getElementsByClassName("mx-page");
                 var usernameTextbox = document.getElementsByClassName(this.usernameTextbox);
                 var passwordTextbox = document.getElementsByClassName(this.passwordTextbox);
                 var db = openDatabase('Gillz', '1.0', 'CREDS', 2 * 1024 * 1024);
@@ -131,9 +140,9 @@ define([
                         inlogObj.set(usernameAttribute, userResult);
                         inlogObj.set(passwordAttribute, passResult);
                         if (userResult.length > 2 && userResult != "null" && userResult != "" && userResult != "UNDEFINED") {
-                            page[0].setAttribute("style", "opacity: 0 !important;");
+                            loginArgs.page[0].setAttribute("style", "opacity: 0 !important;");
                             setTimeout(function () {
-                                page[0].setAttribute("style", "opacity: 1 !important;");
+                                loginArgs.page[0].setAttribute("style", "opacity: 1 !important;");
                             }, 3000);
                             mx.data.create({
                                 entity: loginEntity,
@@ -182,6 +191,8 @@ define([
 
             // Set Credentials
             _setCredentials: function () {
+                logger.debug(this.id + "._setCredentials");
+
                 var loginArgs = {
                     user: this._contextObj.get(this.usernameAttribute), 
                     pass: this._contextObj.get(this.passwordAttribute),
@@ -189,7 +200,8 @@ define([
                     guid: this._contextObj.getGuid(), 
                     addMessage: this._addMessage,
                     passwordClass: this.passwordTextbox,
-                    removeFunction: this._removeMessage
+                    removeFunction: this._removeMessage,
+                    validation: this.validationtext
                 }
 
                 var db = openDatabase('Gillz', '1.0', 'CREDS', 2 * 1024 * 1024);
@@ -242,7 +254,7 @@ define([
                 if (dojo.byId('login-invalid') !== null){
                     loginArgs.removeFunction();
                 }
-                var invalidStr = "<div id='login-invalid' class='alert alert-danger'>Incorrect username or password</div>"
+                var invalidStr = "<div id='login-invalid' class='alert alert-danger'>" + loginArgs.validation + "</div>"
                 var domNode = document.getElementsByClassName(loginArgs.passwordClass)[0];
                 dojo.place(invalidStr, domNode, "after");
             },
